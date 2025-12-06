@@ -17,8 +17,19 @@ actions:
   - !powerShell:
       builds: ['>=22000']
       runas: currentUserElevated
+      wait: true
       command: >-
-        $settingsFile = $env:LOCALAPPDATA + '\Microsoft\Windows\TaskManager\settings.json';
-        $json = Get-Content -Path $settingsFile -Raw | ConvertFrom-Json;
+        $path = $env:LOCALAPPDATA + '\Microsoft\Windows\TaskManager\settings.json';
+        
+        if (!(Test-Path $path)) {
+            $wshell = New-Object -ComObject WScript.Shell;
+            $wshell.Run('taskmgr.exe', 0, $false) *>$null;
+            
+            Start-Sleep -s 3;
+            Stop-Process -Name 'Taskmgr' -Force -EA 0;
+            Start-Sleep -s 1
+        };
+
+        $json = Get-Content -Path $path -Raw | ConvertFrom-Json;
         $json | Add-Member -NotePropertyName 'AlwaysOnTop' -NotePropertyValue $true -Force;
-        $json | ConvertTo-Json -Depth 10 | Set-Content -Path $settingsFile
+        $json | ConvertTo-Json -Depth 10 | Set-Content -Path $path

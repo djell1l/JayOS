@@ -17,6 +17,7 @@ reg delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\Messaging" /v "AllowMessage
 reg delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\System" /v "AllowCrossDeviceClipboard" /f > nul 2>&1
 reg delete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\CrossDeviceResume\Configuration" /v "IsResumeAllowed" /f > nul 2>&1
 reg delete "HKLM\SYSTEM\CurrentControlSet\Control\FeatureManagement\Overrides\8\1387020943" /v "EnabledState" /f > nul 2>&1
+reg add "HKLM\SOFTWARE\Microsoft\PolicyManager\default\Connectivity\DisableCrossDeviceResume" /v "value" /t REG_DWORD /d 0 /f > nul 2>&1
 reg delete "HKLM\SOFTWARE\Policies\Microsoft\Edge" /v "SyncDisabled" /f > nul 2>&1
 reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\mobsync.exe" /v "Debugger" /f > nul 2>&1
 

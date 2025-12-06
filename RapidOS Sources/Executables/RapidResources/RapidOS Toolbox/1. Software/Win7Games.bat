@@ -45,7 +45,7 @@ Write-Host "Extracting..."
 Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
 
 Write-Host "Starting..."
-$exe = Get-ChildItem -Path $extractPath -Filter *.exe -Recurse | Select-Object -First 1
+$exe = gci -Path $extractPath -Filter *.exe -Recurse | Select -First 1
 Start-Process $exe.FullName
 
 Write-Host "Done."

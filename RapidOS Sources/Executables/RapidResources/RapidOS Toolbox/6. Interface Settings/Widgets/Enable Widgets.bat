@@ -23,7 +23,7 @@ for /d %%a in ("%ProgramFiles(x86)%\Microsoft\EdgeWebView\Application\*") do (
 )
 
 set "webexperienceInstalled=0"
-powershell -Command "if (Get-AppxPackage -AllUsers *WebExperience* | Where-Object { $_.Name -like '*WebExperience*' }) { exit 1 }"
+powershell -C "if (Get-AppxPackage -AllUsers *WebExperience* | ? {$_.Name -like '*WebExperience*'}) {exit 1}"
 if errorlevel 1 (
     set webexperienceInstalled=1
 )
@@ -72,7 +72,7 @@ if /i "%userChoice%"=="yes" (
             pause
             exit /b 1
         )
-        powershell -Command "Write-Host 'Downloading Microsoft Edge...'; [Net.ServicePointManager]::SecurityProtocol = 'tls12, tls11, tls'; md -Path $env:temp\edgeinstall -erroraction SilentlyContinue | Out-Null; $Download = join-path $env:temp\edgeinstall MicrosoftEdgeEnterpriseX64.msi; $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest 'http://go.microsoft.com/fwlink/?LinkID=2093437' -OutFile $Download; Start-Process $Download -ArgumentList '/quiet'; Write-Host 'Installed Microsoft Edge!'"
+        powershell -C "Write-Host 'Downloading Microsoft Edge...'; [Net.ServicePointManager]::SecurityProtocol = 'tls12, tls11, tls'; md -Path $env:temp\edgeinstall -EA 0 *>$null; $Download = join-path $env:temp\edgeinstall MicrosoftEdgeEnterpriseX64.msi; $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest 'http://go.microsoft.com/fwlink/?LinkID=2093437' -OutFile $Download; Start-Process $Download -ArgumentList '/quiet'; Write-Host 'Installed Microsoft Edge!'"
     )
 
     if %webviewInstalled%==0 (
@@ -109,8 +109,8 @@ if /i "%userChoice%"=="yes" (
         echo Installing Widgets app...
         winget install -e 9MSSGKG348SP --silent --force --accept-source-agreements --accept-package-agreements > nul 2>&1
         timeout /t 3 /nobreak >nul
-        for /f "tokens=*" %%i in ('powershell -Command "Get-AppxPackage -AllUsers *WebExperience* | % {$_.InstallLocation}"') do (
-            powershell -Command "Add-AppxPackage -DisableDevelopmentMode -Register \"%%i\AppXManifest.xml\""
+        for /f "tokens=*" %%i in ('powershell -C "Get-AppxPackage -AllUsers *WebExperience* | % {$_.InstallLocation}"') do (
+            powershell -C "Add-AppxPackage -DisableDevelopmentMode -Register \"%%i\AppXManifest.xml\""
         )
     )
 
@@ -130,6 +130,7 @@ if /i "%userChoice%"=="yes" (
     if %allowNewsAndInterests%==0 (
         reg add "HKLM\SOFTWARE\Policies\Microsoft\Dsh" /v "AllowNewsAndInterests" /t REG_DWORD /d 1 /f > nul 2>&1
     )
+    sc config UCPD start= auto > nul 2>&1
 
     echo All components and settings have been restored.
 ) else (

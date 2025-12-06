@@ -87,6 +87,12 @@ actions:
       type: REG_DWORD
       data: '1'
       option: 'disable-sync'
+  - !registryValue:
+      path: 'HKLM\SOFTWARE\Microsoft\PolicyManager\default\Connectivity\DisableCrossDeviceResume'
+      value: 'value'
+      type: REG_DWORD
+      data: '1'
+      option: 'disable-sync'
 
   # === Disable Microsoft Edge syncing ===
   - !registryValue:
@@ -109,3 +115,4 @@ actions:
       name: 'OneSyncSvc'
       operation: change
       startup: '4'
+      option: 'disable-sync'

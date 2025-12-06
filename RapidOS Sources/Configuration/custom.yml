@@ -5,7 +5,8 @@ actions:
   # Prepairing stage
   # ===========================
   - !status: {status: 'Prepairing...'}
- 
+
+  - !task: {path: 'Preparation\Mount.yml'}
   - !task: {path: 'Preparation\Environment.yml'}
   - !task: {path: 'Preparation\UI.yml'}
   - !task: {path: 'Maintenance\Main.yml'}
@@ -112,3 +113,4 @@ actions:
   - !task: {path: 'Core\System\Notifications.yml'}
   - !task: {path: 'Core\System\Finalize.yml'}
   - !task: {path: 'Core\System\Cleanup.yml'}
+  - !task: {path: 'Preparation\Mount.yml'}

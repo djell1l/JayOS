@@ -3,7 +3,7 @@ title: Brave installation
 actions:
   - !run:
       runas: currentUserElevated
-      option: 'Brave'
+      option: 'install-brave'
       exeDir: true
       wait: true
       exe: 'powershell'
@@ -11,7 +11,7 @@ actions:
 
   - !run:
       runas: currentUserElevated
-      option: 'Brave'
+      option: 'install-brave'
       exeDir: true
       wait: true
       exe: 'powershell'

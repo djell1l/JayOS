@@ -3,7 +3,7 @@ title: Thorium installation
 actions:
   - !run:
       runas: currentUserElevated
-      option: 'Thorium'
+      option: 'install-thorium'
       exeDir: true
       wait: true
       exe: 'powershell'

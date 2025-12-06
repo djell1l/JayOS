@@ -57,6 +57,7 @@ function Invoke-DiskCleanup {
         if (Test-Path $keyPath) {Set-RegistryValue -Path $keyPath -Name "StateFlags0042" -Type DWORD -Value $_.Value} 
     }
 
+    Write-Host "Starting cleanmgr.exe..." -F DarkGray
     $i = 0
     while ($i -lt $config.RetryLimit) {
         $cleanupProcess = Start-Process -FilePath "$env:WinDir\system32\cleanmgr.exe" -ArgumentList "/sagerun:42" -PassThru
@@ -67,19 +68,19 @@ public class Win32 {
     [DllImport("user32.dll")]
     public static extern bool ShowWindow(IntPtr hWnd,int nCmdShow);
 }
-"@; $SW_HIDE=0; while (Get-Process -Name cleanmgr -EA 0) {Get-Process -Name cleanmgr -EA 0 | % {try {if ($_.MainWindowHandle -ne 0) {[Win32]::ShowWindow($_.MainWindowHandle,$SW_HIDE)*>$null}} catch {}}; Start-Sleep -Milliseconds 100}} *>$null
+"@; $SW_HIDE=0; while (Get-Process -Name cleanmgr -EA 0) {Get-Process -Name cleanmgr -EA 0 | % {try {if ($_.MainWindowHandle -ne 0) {[Win32]::ShowWindow($_.MainWindowHandle,$SW_HIDE)*>$null}} catch {}}; Start-Sleep -m 300}} *>$null
         $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
         $lastCpuUsage = 0
         $lastMemoryUsage = 0
         while ($cleanupProcess -and !$cleanupProcess.HasExited -and $stopwatch.Elapsed.TotalSeconds -lt $config.Timeout) {
-            Start-Sleep -Seconds 10
+            Start-Sleep -s 10
             $process = Get-Process -Id $cleanupProcess.Id -EA 0
             if ($process) {
                 $cpuUsage = $process.CPU
                 $memoryUsage = $process.WS
                 if ($cpuUsage -eq $lastCpuUsage -and $memoryUsage -eq $lastMemoryUsage) {
                     Write-Warning "Disk cleanup might be stuck. Terminating process."
-                    if ($cleanupProcess.MainWindowHandle -ne 0) {$cleanupProcess.CloseMainWindow()*>$null;Start-Sleep -Seconds 5}
+                    if ($cleanupProcess.MainWindowHandle -ne 0) {$cleanupProcess.CloseMainWindow()*>$null; Start-Sleep -s 5}
                     if (!$cleanupProcess.HasExited) {taskkill /f /pid $cleanupProcess.Id *>$null}
                     $i++
                     break

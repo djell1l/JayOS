@@ -33,6 +33,7 @@ while ($true) {
                 Write-Host
                 Write-Host "[1] Apply optimizations"
                 Write-Host "[2] Remove optimizations"
+                Write-Host "[3] Remove uBlock Origin"
                 Write-Host "[B] Back to Main Menu"
                 Write-Host
 
@@ -46,8 +47,43 @@ while ($true) {
                     }
                     '2' {
                         $basePath = if (Test-Path "$env:ProgramFiles\Mozilla Firefox") {"$env:ProgramFiles\Mozilla Firefox"} else {"${env:ProgramFiles(x86)}\Mozilla Firefox"}
-                        Remove-Item -Path (Join-Path $basePath "distribution") -Recurse -Force -EA 0
+                        del -Path (Join-Path $basePath "distribution") -Recurse -Force -EA 0
                         Write-Host "Successfully removed Firefox policies."
+                        $null = Read-Host "Press Enter to continue"
+                    }
+                    '3' {
+                        $basePath = if (Test-Path "$env:ProgramFiles\Mozilla Firefox") {
+                            "$env:ProgramFiles\Mozilla Firefox"
+                        } else {
+                            "${env:ProgramFiles(x86)}\Mozilla Firefox"
+                        }
+
+                        $distPath = Join-Path $basePath "distribution"
+                        if (!(Test-Path $distPath)) {
+                            Write-Host "Firefox optimizations have already been removed."
+                            $null = Read-Host "Press Enter to continue"
+                            break
+                        }
+
+                        $filePath = Join-Path $distPath "policies.json"
+                        if (Test-Path $filePath) {
+                            $json = Get-Content -Path $filePath -Raw | ConvertFrom-Json
+
+                            if ($json.policies.PSObject.Properties['ExtensionSettings']) {
+                                if ($json.policies.ExtensionSettings.PSObject.Properties['uBlock0@raymondhill.net']) {
+                                    $json.policies.ExtensionSettings.PSObject.Properties.Remove('uBlock0@raymondhill.net')
+                                }
+
+                                $props = $json.policies.ExtensionSettings.PSObject.Properties | ? {$_.MemberType -eq 'NoteProperty'}
+                                if (!$props) {
+                                    $json.policies.PSObject.Properties.Remove('ExtensionSettings')
+                                }
+                            }
+
+                            $json | ConvertTo-Json -Depth 10 | Set-Content -Path $filePath -Encoding ASCII
+                        }
+
+                        Write-Host "Successfully removed uBlock Origin policy."
                         $null = Read-Host "Press Enter to continue"
                     }
                     'B' {$inTweak = $false}

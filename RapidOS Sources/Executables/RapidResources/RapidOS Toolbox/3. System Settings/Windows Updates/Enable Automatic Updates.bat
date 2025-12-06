@@ -25,7 +25,7 @@ reg delete "$regPath" /v "PauseQualityUpdatesEndTime" /f *>$null
 reg delete "$regPath" /v "PauseUpdatesStartTime" /f *>$null
 reg delete "$regPath" /v "PauseUpdatesExpiryTime" /f *>$null
 
-reg delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" /v "UseWUServer" /f *>$null
+reg delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" /v "AUOptions" /f *>$null
 
 & "$env:WinDir\RapidScripts\Set-Pages.cmd" -remove windowsupdate *>$null
 

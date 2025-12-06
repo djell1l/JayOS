@@ -113,6 +113,3 @@ actions:
   - !registryValue: {path: 'HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\BingChatInstaller.exe', value: 'Debugger', type: REG_SZ, data: '%WinDir%\System32\taskkill.exe'}
   - !registryValue: {path: 'HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\BGAUpsell.exe', value: 'Debugger', type: REG_SZ, data: '%WinDir%\System32\taskkill.exe'}
   - !registryValue: {path: 'HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\BCILauncher.exe', value: 'Debugger', type: REG_SZ, data: '%WinDir%\System32\taskkill.exe'}
-
-  # === Block Outlook desktop ads ===
-  - !cmd: {command: 'findstr /c:"m.adnxs.com" %WinDir%\System32\drivers\etc\hosts >nul || echo 0.0.0.0 m.adnxs.com >> %WinDir%\System32\drivers\etc\hosts', runas: currentUserElevated}

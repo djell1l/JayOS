@@ -68,7 +68,7 @@ function Import-RegState {
 
         $restoredKeys = $keyData._keys.PSObject.Properties | % {$_.Name}
         gci -Path $path -EA 0 | % {
-            if ($_.Name -notin $restoredKeys) {Remove-Item -Path $_.PSPath -Recurse -Force -EA 1}
+            if ($_.Name -notin $restoredKeys) {del -Path $_.PSPath -Recurse -Force -EA 1}
         }
 
         $restoredValues = $keyData._values.PSObject.Properties.Name
@@ -133,16 +133,23 @@ function Get-Specs {
         "{0:N1} $($u[$i])" -f $b
     }
 
-    # === Get the real Windows version like %SystemRoot%\system32\winver.exe relies on ===
-    if (!("OSInfo" -as [type]) -and (Test-Path 'C:\Windows\System32\Winbrand.dll' -EA 0)) {
+    # === Get the real Windows version & hardware info via native calls ===
+    if (!("OSInfo" -as [type])) {
 $cs = @"
-using System;
-using System.Runtime.InteropServices;
+using System; using System.Runtime.InteropServices;
 public class OSInfo {
-    [DllImport("Winbrand.dll", CharSet=CharSet.Unicode)]
-    static extern string BrandingFormatString(string fmt);
-    public static string GetOSName() { 
-        return BrandingFormatString("%WINDOWS_LONG%") ?? "Unknown OS";
+    [DllImport("Winbrand.dll", CharSet=CharSet.Unicode)] static extern string BrandingFormatString(string f);
+    public static string GetOSName() {return BrandingFormatString("%WINDOWS_LONG%") ?? "Unknown OS";}
+    [DllImport("kernel32")] static extern bool GlobalMemoryStatusEx(ref M b);
+    [StructLayout(LayoutKind.Sequential)] public struct M {public uint l; public uint d; public ulong t; public ulong a; public ulong p; public ulong ap; public ulong v; public ulong av; public ulong x;}
+    public static ulong GetTotalRam() {var m=new M(); m.l=(uint)Marshal.SizeOf(typeof(M)); GlobalMemoryStatusEx(ref m); return m.t;}
+    [DllImport("kernel32")] static extern bool GetLogicalProcessorInformation(IntPtr b, ref uint l);
+    public static int GetCoreCount() { 
+        uint l=0; GetLogicalProcessorInformation(IntPtr.Zero, ref l); 
+        var b=Marshal.AllocHGlobal((int)l); GetLogicalProcessorInformation(b, ref l);
+        int c=0; int s=IntPtr.Size==8?32:24; long p=b.ToInt64(); 
+        for(int i=0;i<l;i+=s) if(Marshal.ReadInt32((IntPtr)(p+i+IntPtr.Size))==0) c++; 
+        Marshal.FreeHGlobal(b); return c; 
     }
 }
 "@
@@ -181,6 +188,14 @@ public class OSInfo {
     }
     $fullOS = "$osName (v$osVer)"
 
+    $arch = switch ($true) {
+        ([Environment]::Is64BitOperatingSystem) {
+            $isArm = (Get-CimInstance Win32_ComputerSystem).SystemType -match 'ARM64' -or $env:PROCESSOR_ARCHITECTURE -eq 'ARM64'
+            if ($isArm) {'arm64'} else {'x64'}
+        }
+        default {'x86'}
+    }
+
     # ===========================
     # Get CPU info
     # ===========================
@@ -188,8 +203,8 @@ public class OSInfo {
     switch ($null -ne $proc) {
         $true {
             $cpuName = ($proc.Name -replace '\(R\)|\(TM\)|\s+',' ').Trim()
-            $cores = $proc.NumberOfCores
-            $threads = $proc.ThreadCount
+            $cores = [OSInfo]::GetCoreCount()
+            $threads = [Environment]::ProcessorCount
         }
         default {
             $cpuName = 'Unknown CPU'
@@ -201,10 +216,8 @@ public class OSInfo {
     # ===========================
     # Get RAM info
     # ===========================
-    $mem = Get-CimInstance Win32_PhysicalMemory -EA 0
-    if (!$mem) {$mem = Get-WmiObject Win32_PhysicalMemory -EA 0}
-    $sum = ($mem | Measure-Object -Property Capacity -Sum).Sum
-    $ramStr = if ($sum) {& $toReadable $sum} else {'0 B'}
+    $totalBytes = [OSInfo]::GetTotalRam()
+    $ramStr = if ($totalBytes -gt 0) {& $toReadable $totalBytes} else {'Unknown RAM'}
 
     # ===========================
     # Get GPU info
@@ -229,6 +242,7 @@ public class OSInfo {
             switch ($flag) {
                 'OS' {
                     Write-Output "OS: $fullOS"
+                    Write-Output "Arch: $arch"
                     Write-Output "VM: $(Test-VM)"
                 }
                 'CPU' {
@@ -246,4 +260,38 @@ public class OSInfo {
     }
 }
 
-Export-ModuleMember -Function Export-RegState, Import-RegState, LimitNetwork, Get-Specs
+function Get-UserPath {
+    param (
+        [string]$FolderID = 'B4BFCC3A-DB2C-424C-B029-7FE99A87C641',
+        [System.IntPtr]$Token = -1,
+        [int]$Flags = 0x00008000
+    )
+
+    $guid = [guid]::new($FolderID)
+    if (!$guid) {throw "Invalid FolderID"}
+
+Add-Type @'
+using System;
+using System.Runtime.InteropServices;
+public class KnownFolder {
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    public static extern int SHGetKnownFolderPath(
+        [MarshalAs(UnmanagedType.LPStruct)] Guid rfid,
+        uint dwFlags,
+        IntPtr hToken,
+        out IntPtr pszPath
+    );
+}
+'@
+
+    $pszPath = [IntPtr]::Zero
+    $result = [KnownFolder]::SHGetKnownFolderPath($guid, $Flags, $Token, [ref]$pszPath)
+
+    if ($result -eq 0 -and $pszPath -ne [IntPtr]::Zero) {
+        $path = [Runtime.InteropServices.Marshal]::PtrToStringUni($pszPath)
+        [Runtime.InteropServices.Marshal]::FreeCoTaskMem($pszPath)
+        return $path
+    }
+}
+
+Export-ModuleMember -Function Export-RegState, Import-RegState, LimitNetwork, Get-Specs, Get-UserPath

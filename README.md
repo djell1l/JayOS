@@ -103,7 +103,7 @@ You'll need a text editor to deploy the project:
 
 For any questions, feedback or suggestions, you can:
 
-- **Join our [Discord server](http://discord.rapid-community.ru)**  
+- **Join our [Discord server](https://discord.rapid-community.ru)**  
   Connect with the Rapid Community and interact with developers.
 
 - **Follow us on [X.com](https://x.com/community_rapid)**  

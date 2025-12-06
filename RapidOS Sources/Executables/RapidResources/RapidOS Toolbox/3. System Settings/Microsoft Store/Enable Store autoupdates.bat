@@ -7,6 +7,7 @@ setlocal
 )
   
 reg delete "HKLM\SOFTWARE\Policies\Microsoft\WindowsStore" /v AutoDownload /f > nul 2>&1
+reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsStore\WindowsUpdate" /v AutoDownload /f > nul 2>&1
 
 echo Microsoft Store updates have been enabled.
 pause

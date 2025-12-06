@@ -13,7 +13,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo This installation method is not developed by me. It is sourced from the following repository:
+echo This installation method is not developed by RapidOS. It is sourced from the following repository:
 echo https://github.com/NelloKudo/Apple-Mobile-Drivers-Installer/
 pause
 

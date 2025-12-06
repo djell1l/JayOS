@@ -31,7 +31,7 @@ Set-RegistryValue -Path $regPath -Name "PauseQualityUpdatesEndTime" -Type String
 Set-RegistryValue -Path $regPath -Name "PauseQualityUpdatesStartTime" -Type String -Value $today
 Set-RegistryValue -Path $regPath -Name "PauseUpdatesStartTime" -Type String -Value $today
 
-Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" -Name "UseWUServer" -Type DWORD -Value 1
+Set-RegistryValue -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" -Name "AUOptions" -Type DWORD -Value 2
 
 & "$env:WinDir\RapidScripts\Set-Pages.cmd" -add windowsupdate *>$null
 

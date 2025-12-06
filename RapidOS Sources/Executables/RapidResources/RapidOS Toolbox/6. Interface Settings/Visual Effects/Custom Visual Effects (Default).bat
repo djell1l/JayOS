@@ -9,7 +9,8 @@ powershell -c "$f='%~f0'; $lines=Get-Content $f; $idx=$lines.IndexOf(':PS'); iex
 exit /b
 
 :PS
-$memGB = [math]::Round(((Get-CimInstance Win32_PhysicalMemory | Measure-Object Capacity -Sum).Sum) / 1GB)
+$ramLine = Get-Specs | ? {$_ -match 'RAM:'} | % {$_ -replace '[^0-9,.]'}
+$memGB = [double]$ramLine
 
 $visualEffectsPath = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects'
 $desktopPath = 'HKCU:\Control Panel\Desktop'

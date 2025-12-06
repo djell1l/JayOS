@@ -5,6 +5,7 @@ actions:
   - !powerShell:
       handleExitCodes: {'!0': halt}
       exeDir: true
+      oobe: false
       wait: true
       command: |
         .\RapidScripts\EnvSetup.ps1

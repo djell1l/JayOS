@@ -8,7 +8,7 @@ actions:
       type: REG_SZ
       data: 'Bypass'
 
-  # === Speed up PowerShell startup ===
+  # === Speed up PowerShell ===
   - !powerShell:
       wait: true
       command: |

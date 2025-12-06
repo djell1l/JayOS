@@ -21,7 +21,7 @@ actions:
       operation: delete
     
   # === Show notification bell icon ===
-  - !registryValue: 
+  - !registryValue:
       path: 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
       value: 'ShowNotificationIcon'
       type: REG_DWORD

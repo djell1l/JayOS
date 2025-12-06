@@ -3,7 +3,7 @@ title: Firefox installation
 actions:
   - !run:
       runas: currentUserElevated
-      option: 'Firefox'
+      option: 'install-firefox'
       exeDir: true
       wait: true
       exe: 'powershell'
@@ -11,7 +11,7 @@ actions:
 
   - !run:
       runas: currentUserElevated
-      option: 'Firefox'
+      option: 'install-firefox'
       exeDir: true
       wait: true
       exe: 'powershell'

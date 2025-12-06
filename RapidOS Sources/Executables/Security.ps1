@@ -14,11 +14,11 @@ Write-Host "Configuring WinRT"
 Write-Host "Getting hostname..." -F DarkGray
 try {$hostname = [System.Net.Dns]::GetHostEntry([System.Net.Dns]::GetHostName()).HostName} catch {$hostname = "localhost"}
 
-Write-Host "Creating trusted certificate..." -F DarkGray                                                                               # -TextExtension ensures Server Authentication OID
+Write-Host "Creating trusted certificate..." -F DarkGray
 $cert = New-SelfSignedCertificate -CertStoreLocation Cert:\LocalMachine\My -DnsName $hostname -KeyUsage DigitalSignature,KeyEncipherment -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.1"); if (!$cert) {Write-Warning "Failed to create certificate."; exit}
 Export-Certificate -Cert $cert -FilePath "$env:TEMP\winrm.cer" -Type CERT *>$null
 Import-Certificate -FilePath "$env:TEMP\winrm.cer" -CertStoreLocation Cert:\LocalMachine\Root *>$null
-Remove-Item "$env:TEMP\winrm.cer" -Force *>$null
+del "$env:TEMP\winrm.cer" -Force *>$null
 
 Write-Host "Creating secure HTTPS listener..." -F DarkGray
 if (!(Test-WSMan -EA 0)) {& winrm quickconfig -Force *>$null}
@@ -59,7 +59,7 @@ Set-SmbServerConfiguration -RequireSecuritySignature $true -Force
 Write-Host "`nConfiguring legacy network protocols"
 
 Write-Host "Enabling LSA Protection/Auditing..." -F DarkGray
-Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\LSASS.exe" -Name "AuditLevel" -Type "DWORD" -Value 8
+Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\LSASS.exe" -Name "AuditLevel" -Type DWORD -Value 8
 
 Write-Host "Disabling NetBIOS over TCP/IP..." -F DarkGray
 Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\NetBT\Parameters" -Name "EnableLMHOSTS" -Type DWORD -Value 0
@@ -82,17 +82,17 @@ if (Get-Service -Name "FDResPub" -EA 0) {
 }
 
 Write-Host "Disabling WPAD..." -F DarkGray
-Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\Wpad" -Name "WpadOverride" -Type "DWORD" -Value 1
-Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\Wpad" -Name "WpadOverride" -Type "DWORD" -Value 1
+Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\Wpad" -Name "WpadOverride" -Type DWORD -Value 1
+Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\Wpad" -Name "WpadOverride" -Type DWORD -Value 1
 
 Write-Host "Disabling WDigest..." -F DarkGray
-Set-RegistryValue -Path "HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\Wdigest" -Name "UseLogonCredential" -Type "DWORD" -Value 0
+Set-RegistryValue -Path "HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\Wdigest" -Name "UseLogonCredential" -Type DWORD -Value 0
 
 Write-Host "Disabling Office OLE..." -F DarkGray
 $versions = '16.0', '15.0', '14.0', '12.0'
 foreach ($version in $versions) {
-    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Office\$version\Outlook\Security" -Name "ShowOLEPackageObj" -Type "DWORD" -Value 0
-    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Office\$version\Outlook\Security" -Name "ShowOLEPackageObj" -Type "DWORD" -Value 0
+    Set-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Office\$version\Outlook\Security" -Name "ShowOLEPackageObj" -Type DWORD -Value 0
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Office\$version\Outlook\Security" -Name "ShowOLEPackageObj" -Type DWORD -Value 0
 }
 
 Write-Host "`nDone."

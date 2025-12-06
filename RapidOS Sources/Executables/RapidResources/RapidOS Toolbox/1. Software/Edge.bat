@@ -33,6 +33,7 @@ while ($true) {
                 Write-Host
                 Write-Host "[1] Apply optimizations"
                 Write-Host "[2] Remove optimizations"
+                Write-Host "[3] Remove uBlock Origin"
                 Write-Host "[B] Back to Main Menu"
                 Write-Host
 
@@ -47,6 +48,12 @@ while ($true) {
                     '2' {
                         reg delete "HKLM\SOFTWARE\Policies\Microsoft\Edge" /f *>$null
                         Write-Host "Successfully removed Microsoft Edge policies."
+                        $null = Read-Host "Press Enter to continue"
+                    }
+                    '3' {
+                        reg delete "HKCU\SOFTWARE\Policies\Microsoft\Edge\ExtensionInstallForcelist" /f *>$null
+                        reg delete "HKLM\SOFTWARE\Policies\Microsoft\Edge\ExtensionInstallForcelist" /f *>$null
+                        Write-Host "Successfully removed uBlock Origin policy."
                         $null = Read-Host "Press Enter to continue"
                     }
                     'B' {$inTweak = $false}

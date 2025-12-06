@@ -37,15 +37,8 @@ function Install-Browser {
 
             # === Download ===
             Write-Host "Downloading Brave..." -F DarkGray
-            try {
-                $src = "https://github.com/brave/brave-browser/releases/latest/download/BraveBrowserStandaloneSilentSetup.exe"
-                Invoke-WebRequest -Uri $src -OutFile $fullExePath -EA 0
-            } catch {
-                $release = ParseGit -Repo "brave/brave-browser" -Latest
-                $src = $release.Assets | ? {$_ -like "*$exeName"}
-                if (!$src) {Write-Host "Failed to fetch Brave installer." -F Red; return}
-                Invoke-WebRequest -Uri $src -OutFile $fullExePath -EA 0
-            }
+            $src = "https://github.com/brave/brave-browser/releases/latest/download/BraveBrowserStandaloneSilentSetup.exe"
+            Invoke-WebRequest -Uri $src -OutFile $fullExePath -EA 0
 
             # === Installation ===
             Write-Host "Installing Brave..." -F DarkGray
@@ -149,13 +142,7 @@ function Install-Browser {
             $setupFile = "EdgeSetup.msi"
 
             # === Arch detection ===
-            $arch = switch ($true) {
-                ([Environment]::Is64BitOperatingSystem) {
-                    $arm = (Get-CimInstance Win32_ComputerSystem).SystemType -match "ARM64" -or $env:PROCESSOR_ARCHITECTURE -eq "ARM64"
-                    ("x64", "arm64")[$arm]
-                }
-                default {"x86"}
-            }
+            $arch = (Get-Specs | ? {$_ -match 'Arch:'}) -replace '.*Arch:\s*','' 
 
             # === Fetch version data ===
             $client = New-Object System.Net.WebClient
@@ -188,35 +175,34 @@ function Install-Browser {
             Write-Host "--- Install Thorium Browser ---" -F Green
             Write-Host "Silent installation of Thorium optimized for CPU instruction set`n"
 
-            # === Select best matching asset ===
             $bestInstructionSet = CpuInstructions -Best
-            $fileName = "Mercury_${bestInstructionSet}_installer.exe"
-            $fullInstallerPath = Join-Path $tempDir $fileName
             try {
                 $release = ParseGit -Repo "Alex313031/Thorium-Win" -Latest
-                $installerUrl = $release.Assets | ? {$_ -match "win" -and $_ -match "\.exe$" -and $_ -match $bestInstructionSet} | Select -First 1
+                $installerUrl = $release.Assets | ? {$_ -match "\.exe$" -and $_ -match $bestInstructionSet} | Select -First 1
             } catch {
+                $installerUrl = $null
+            }
+            if (!$installerUrl) {
                 $fallback = @(
-                    'https://download.rapid-community.ru/download/files/browsers/Thorium_AVX2_installer.exe',
-                    'https://download.rapid-community.ru/download/files/browsers/Thorium_AVX_installer.exe',
-                    'https://download.rapid-community.ru/download/files/browsers/Thorium_SSE3_installer.exe',
-                    'https://download.rapid-community.ru/download/files/browsers/Thorium_SSE4_installer.exe'
+                    'https://download.rapid-community.ru/files/browsers/Thorium_AVX2_installer.exe',
+                    'https://download.rapid-community.ru/files/browsers/Thorium_AVX_installer.exe',
+                    'https://download.rapid-community.ru/files/browsers/Thorium_SSE3_installer.exe',
+                    'https://download.rapid-community.ru/files/browsers/Thorium_SSE4_installer.exe'
                 )
                 $installerUrl = $fallback | ? {$_ -match $bestInstructionSet} | Select -First 1
             }
             if (!$installerUrl) {Write-Host "Failed to locate Thorium installer." -F Red; return}
 
-            # === Download ===
+            $fileName = Split-Path $installerUrl -Leaf
+            $fullInstallerPath = Join-Path $tempDir $fileName
+
             Write-Host "Downloading Thorium..." -F DarkGray
             Invoke-WebRequest -Uri $installerUrl -OutFile $fullInstallerPath -EA 0
 
-            # === Installation ===
             Write-Host "Installing Thorium..." -F DarkGray
-            $installArgs = @("--do-not-launch-chrome")
-            $p = Start-Process -FilePath $fullInstallerPath -ArgumentList $installArgs -PassThru -Wait -EA 0
+            $p = Start-Process -FilePath $fullInstallerPath -ArgumentList "/S" -PassThru -Wait -EA 0
 
-            $exitCode = if ($p) {$p.ExitCode} else {-1}
-            if ($exitCode -ne 0) {Write-Warning "Exit code: $exitCode"}
+            if ($p.ExitCode -ne 0) {Write-Warning "Exit code: $($p.ExitCode)"}
             Write-Host "`nDone."
         }
 
@@ -227,37 +213,36 @@ function Install-Browser {
             Write-Host "--- Install Mercury Browser ---" -F Green
             Write-Host "Silent installation of Mercury optimized for CPU instruction set`n"
 
-            # === Select best matching asset ===
             $bestInstructionSet = CpuInstructions -Best
-            $fileName = "Mercury_${bestInstructionSet}_installer.exe"
-            $fullInstallerPath = Join-Path $tempDir $fileName
             try {
                 $release = ParseGit -Repo "Alex313031/Mercury" -Latest
-                $installerUrl = $release.Assets | ? {$_ -match "win" -and $_ -match "\.exe$" -and $_ -match $bestInstructionSet} | Select -First 1
+                $installerUrl = $release.Assets | ? {$_ -match "\.exe$" -and $_ -match $bestInstructionSet} | Select -First 1
             } catch {
+                $installerUrl = $null
+            }
+            if (!$installerUrl) {
                 $fallback = @(
-                    'https://download.rapid-community.ru/download/files/browsers/Mercury_AVX2_installer.exe',
-                    'https://download.rapid-community.ru/download/files/browsers/Mercury_AVX_installer.exe',
-                    'https://download.rapid-community.ru/download/files/browsers/Mercury_SSE3_installer.exe',
-                    'https://download.rapid-community.ru/download/files/browsers/Mercury_SSE4_installer.exe'
+                    'https://download.rapid-community.ru/files/browsers/Mercury_AVX2_installer.exe',
+                    'https://download.rapid-community.ru/files/browsers/Mercury_AVX_installer.exe',
+                    'https://download.rapid-community.ru/files/browsers/Mercury_SSE3_installer.exe',
+                    'https://download.rapid-community.ru/files/browsers/Mercury_SSE4_installer.exe'
                 )
                 $installerUrl = $fallback | ? {$_ -match $bestInstructionSet} | Select -First 1
             }
             if (!$installerUrl) {Write-Host "Failed to locate Mercury installer." -F Red; return}
 
-            # === Download ===
+            $fileName = Split-Path $installerUrl -Leaf
+            $fullInstallerPath = Join-Path $tempDir $fileName
+
             Write-Host "Downloading Mercury..." -F DarkGray
             Invoke-WebRequest -Uri $installerUrl -OutFile $fullInstallerPath -EA 0
 
-            # === Installation ===
             Write-Host "Installing Mercury..." -F DarkGray
-            $installArgs = @("/S")
-            $p = Start-Process -FilePath $fullInstallerPath -ArgumentList $installArgs -PassThru -Wait -EA 0
+            $p = Start-Process -FilePath $fullInstallerPath -ArgumentList "/S" -PassThru -Wait -EA 0
 
             Get-ScheduledTask | ? {$_.TaskName -like "*Mercury*"} | Disable-ScheduledTask *>$null
 
-            $exitCode = if ($p) {$p.ExitCode} else {-1}
-            if ($exitCode -ne 0) {Write-Warning "Exit code: $exitCode"}
+            if ($p.ExitCode -ne 0) {Write-Warning "Exit code: $($p.ExitCode)"}
             Write-Host "`nDone."
         }
     }
@@ -295,7 +280,7 @@ function Optimize-Browser {
 
         $edgeKeyPath = "HKLM:\SOFTWARE\Policies\Microsoft\Edge"
         $microsoftKeyPath = "HKLM:\SOFTWARE\Microsoft"
-        $extensionPath = "HKCU:\SOFTWARE\Policies\Microsoft\Edge\ExtensionInstallForcelist"
+        $extensionPath = "HKLM:\SOFTWARE\Policies\Microsoft\Edge\ExtensionInstallForcelist"
         $extensionValue = "odfafepnkmbhccpbejgmiehpchacaeak"
 
         foreach ($setting in $cfg.GetEnumerator()) {
@@ -709,11 +694,10 @@ function Install-NET3.5 {
         $netfx = Join-Path $tempDir 'NetFx3.cab'
         $build = (Get-WmiObject Win32_OperatingSystem).BuildNumber
         switch ($build) {
-            19045 {$url = "https://download.rapid-community.ru/download/files/components/NetFx3_amd64_19045.cab"}
-            22621 {$url = "https://download.rapid-community.ru/download/files/components/NetFx3_amd64_22621.cab"}
-            22631 {$url = "https://download.rapid-community.ru/download/files/components/NetFx3_amd64_22631.cab"}
-            26100 {$url = "https://download.rapid-community.ru/download/files/components/NetFx3_amd64_26100.cab"}
-            26200 {$url = "https://download.rapid-community.ru/download/files/components/NetFx3_amd64_26200.cab"}
+            19045 {$url = "https://download.rapid-community.ru/files/components/NetFx3_amd64_19045.cab"}
+            22621 {$url = "https://download.rapid-community.ru/files/components/NetFx3_amd64_22621.cab"}
+            22631 {$url = "https://download.rapid-community.ru/files/components/NetFx3_amd64_22631.cab"}
+            26200 {$url = "https://download.rapid-community.ru/files/components/NetFx3_amd64_26200.cab"}
             default {Write-Host "Build is not supported"; return}
         }
         Invoke-WebRequest -Uri $url -OutFile $netfx -EA 0
@@ -865,13 +849,13 @@ function Install-MediaExtensions {
         if (!$pkg) {
             if ($app.Name -like "Microsoft.HEIFImageExtension*") {
                 $pkg = @{
-                    Url  = 'https://download.rapid-community.ru/download/files/extensions/Microsoft.HEIFImageExtension.appxbundle'
+                    Url  = 'https://download.rapid-community.ru/files/extensions/Microsoft.HEIFImageExtension.appxbundle'
                     File = 'Microsoft.HEIFImageExtension.appxbundle'
                 }
             }
             elseif ($app.Name -like "Microsoft.HEVCVideoExtension*") {
                 $pkg = @{
-                    Url  = 'https://download.rapid-community.ru/download/files/extensions/Microsoft.HEVCVideoExtension.appxbundle'
+                    Url  = 'https://download.rapid-community.ru/files/extensions/Microsoft.HEVCVideoExtension.appxbundle'
                     File = 'Microsoft.HEVCVideoExtension.appxbundle'
                 }
             }
@@ -903,10 +887,11 @@ function Uninstall-Edge {
     # === Stop processes ===
     $ErrorActionPreference = "SilentlyContinue"
     gci -Name "*edge*" | ? {(Get-Service $_).DisplayName -like "*Microsoft Edge*"} | % {Stop-Service $_ -Force}
-    tasklist | ? {
+
+    Get-Process | ? {
         $_.Path -like "${env:ProgramFiles(x86)}\Microsoft\*" -or
         $_.Name -like "*msedge*"
-    } | % {taskkill $_.Id -Force}
+    } | % {Stop-Process $_ -Force}
     $ErrorActionPreference = "Continue"
 
     # === Find uninstall keys ===
@@ -987,23 +972,30 @@ function Uninstall-Edge {
             2 {
                 Write-Host "Method 2: bypass WinDir feature..." -F DarkGray
                 $envKey = "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Environment"
-                Set-RegistryValue -Path $envKey -Name "WinDir" -Type ExpandString -Value ""
-                $env:WinDir = [Environment]::GetEnvironmentVariable("WinDir", "Machine")
-                foreach ($id in $msi) {
-                    Start-Process "msiexec.exe" -ArgumentList "/qn /X$id REBOOT=ReallySuppress /norestart" -Wait
-                }
-                if ($uninstExe) {
-                    Start-Process $uninstExe -ArgumentList "$uninstArgs --force-uninstall" -Wait -WindowStyle Hidden
-                } else {
-                    foreach ($item in $setup) {
-                        if (Test-Path $item) {
-                            $level = if ($item -like "*\AppData\Local\*") {"--user-level"} else {"--system-level"}
-                            Start-Process $item -ArgumentList "--uninstall --msedge $level --channel=stable --verbose-logging --force-uninstall" -Wait
+                $oldWinDir = (Get-ItemProperty $envKey -Name "WinDir" -EA 0).WinDir
+                if (!$oldWinDir) {$oldWinDir = "%SystemRoot%"}
+                
+                try {
+                    Set-RegistryValue -Path $envKey -Name "WinDir" -Type ExpandString -Value ""
+                    $env:WinDir = [Environment]::GetEnvironmentVariable("WinDir", "Machine")
+                    foreach ($id in $msi) {
+                        Start-Process "msiexec.exe" -ArgumentList "/qn /X$id REBOOT=ReallySuppress /norestart" -Wait
+                    }
+                    if ($uninstExe) {
+                        Start-Process $uninstExe -ArgumentList "$uninstArgs --force-uninstall" -Wait -WindowStyle Hidden
+                    } else {
+                        foreach ($item in $setup) {
+                            if (Test-Path $item) {
+                                $level = if ($item -like "*\AppData\Local\*") {"--user-level"} else {"--system-level"}
+                                Start-Process $item -ArgumentList "--uninstall --msedge $level --channel=stable --verbose-logging --force-uninstall" -Wait
+                            }
                         }
                     }
+                } finally {
+                    Write-Host "Cleanup method 2..." -F DarkGray
+                    Set-RegistryValue -Path $envKey -Name "WinDir" -Type ExpandString -Value $oldWinDir
+                    $env:WinDir = $oldWinDir
                 }
-                Write-Host "Cleanup method 2..." -F DarkGray
-                Set-RegistryValue -Path $envKey -Name "WinDir" -Type ExpandString -Value "%SystemRoot%"
                 $fail = Test-Path $edgeExe
             }
             3 {
@@ -1011,70 +1003,83 @@ function Uninstall-Edge {
                 $geoKey = "HKU:\.DEFAULT\Control Panel\International\Geo"
                 $geoVals = @{"Name"="FR"; "Nation"="84"}
                 $suffix = "EdgeSaved"
-                foreach ($entry in $geoVals.GetEnumerator()) {
-                    reg delete $geoKey /v $entry.Key /f *>$null
-                    reg delete $geoKey /v "$($entry.Key)$suffix" /f *>$null
-                }
-                foreach ($id in $msi) {
-                    Start-Process "msiexec.exe" -ArgumentList "/qn /X$id REBOOT=ReallySuppress /norestart" -Wait
-                }
-                if ($uninstExe) {
-                    Start-Process $uninstExe -ArgumentList "$uninstArgs --force-uninstall" -Wait -WindowStyle Hidden
-                } else {
-                    foreach ($item in $setup) {
-                        if (Test-Path $item) {
-                            $level = if ($item -like "*\AppData\Local\*") {"--user-level"} else {"--system-level"}
-                            Start-Process $item -ArgumentList "--uninstall --msedge $level --channel=stable --verbose-logging --force-uninstall" -Wait
+                try {
+                    foreach ($entry in $geoVals.GetEnumerator()) {
+                        $curr = (Get-ItemProperty $geoKey -Name $entry.Key -EA 0).($entry.Key)
+                        if ($curr) {reg add $geoKey.Replace("HKU:","HKU") /v "$($entry.Key)$suffix" /t REG_SZ /d $curr /f *>$null}
+                        reg add $geoKey.Replace("HKU:","HKU") /v $entry.Key /t REG_SZ /d $entry.Value /f *>$null
+                    }
+                    foreach ($id in $msi) {
+                        Start-Process "msiexec.exe" -ArgumentList "/qn /X$id REBOOT=ReallySuppress /norestart" -Wait
+                    }
+                    if ($uninstExe) {
+                        Start-Process $uninstExe -ArgumentList "$uninstArgs --force-uninstall" -Wait -WindowStyle Hidden
+                    } else {
+                        foreach ($item in $setup) {
+                            if (Test-Path $item) {
+                                $level = if ($item -like "*\AppData\Local\*") {"--user-level"} else {"--system-level"}
+                                Start-Process $item -ArgumentList "--uninstall --msedge $level --channel=stable --verbose-logging --force-uninstall" -Wait
+                            }
                         }
                     }
-                }
-                Write-Host "Cleanup method 3..." -F DarkGray
-                foreach ($entry in $geoVals.GetEnumerator()) {
-                    reg delete $geoKey /v $entry.Key /f *>$null
-                    reg delete $geoKey /v "$($entry.Key)$suffix" /f *>$null
+                } finally {
+                    Write-Host "Cleanup method 3..." -F DarkGray
+                    foreach ($entry in $geoVals.GetEnumerator()) {
+                        reg delete $geoKey.Replace("HKU:","HKU") /v $entry.Key /f *>$null
+                        $saved = (Get-ItemProperty $geoKey -Name "$($entry.Key)$suffix" -EA 0)."$($entry.Key)$suffix"
+                        if ($saved) {
+                            reg add $geoKey.Replace("HKU:","HKU") /v $entry.Key /t REG_SZ /d $saved /f *>$null
+                            reg delete $geoKey.Replace("HKU:","HKU") /v "$($entry.Key)$suffix" /f *>$null
+                        }
+                    }
                 }
                 $fail = Test-Path $edgeExe
             }
             4 {
                 Write-Host "Method 4: edit region policy JSON..." -F DarkGray
                 $jsonFile = "$env:WinDir\System32\IntegratedServicesRegionPolicySet.json"
+                $backup = "IntegratedServicesRegionPolicySet.json.$([IO.Path]::GetRandomFileName())"
                 $clean = $false
                 if (Test-Path $jsonFile) {
-                    $clean = $true
                     try {
+                        $clean = $true
                         takeown /f $jsonFile /a *>$null
                         icacls $jsonFile /grant *S-1-5-32-544:F /t /q *>$null
-                        $data = type $jsonFile | ConvertFrom-Json
+                        $data = Get-Content $jsonFile -Raw | ConvertFrom-Json
                         foreach ($policy in $data.policies) {
-                            if ($policy.'$comment' -like "*Edge*" -and $policy.'$comment' -like "*uninstall*") {
+                            if ($policy.PSObject.Properties['$comment'] -and $policy.'$comment' -like "*Edge*" -and $policy.'$comment' -like "*uninstall*") {
                                 $policy.defaultState = "enabled"
                             }
                         }
+                        
                         $newJson = $data | ConvertTo-Json -Depth 100
-                        $backup = "IntegratedServicesRegionPolicySet.json.$([IO.Path]::GetRandomFileName())"
-                        move $jsonFile $backup -Force
-                        Set-Content $jsonFile $newJson -Encoding UTF8
+                        move $jsonFile "$env:WinDir\System32\$backup" -Force
+                        [System.IO.File]::WriteAllText($jsonFile, $newJson, [System.Text.Encoding]::UTF8)
                     } catch {
                         Write-Host $_
+                        $clean = $false
                     }
                 }
-                foreach ($id in $msi) {
-                    Start-Process "msiexec.exe" -ArgumentList "/qn /X$id REBOOT=ReallySuppress /norestart" -Wait
-                }
-                if ($uninstExe) {
-                    Start-Process $uninstExe -ArgumentList "$uninstArgs --force-uninstall" -Wait -WindowStyle Hidden
-                } else {
-                    foreach ($item in $setup) {
-                        if (Test-Path $item) {
-                            $level = if ($item -like "*\AppData\Local\*") {"--user-level"} else {"--system-level"}
-                            Start-Process $item -ArgumentList "--uninstall --msedge $level --channel=stable --verbose-logging --force-uninstall" -Wait
+                try {
+                    foreach ($id in $msi) {
+                        Start-Process "msiexec.exe" -ArgumentList "/qn /X$id REBOOT=ReallySuppress /norestart" -Wait
+                    }
+                    if ($uninstExe) {
+                        Start-Process $uninstExe -ArgumentList "$uninstArgs --force-uninstall" -Wait -WindowStyle Hidden
+                    } else {
+                        foreach ($item in $setup) {
+                            if (Test-Path $item) {
+                                $level = if ($item -like "*\AppData\Local\*") {"--user-level"} else {"--system-level"}
+                                Start-Process $item -ArgumentList "--uninstall --msedge $level --channel=stable --verbose-logging --force-uninstall" -Wait
+                            }
                         }
                     }
-                }
-                if ($clean) {
-                    Write-Host "Cleanup method 4..." -F DarkGray
-                    & $del $jsonFile *>$null
-                    move "$env:WinDir\System32\$backup" $jsonFile -Force *>$null
+                } finally {
+                    if ($clean -and (Test-Path "$env:WinDir\System32\$backup")) {
+                        Write-Host "Cleanup method 4..." -F DarkGray
+                        & $del $jsonFile *>$null
+                        move "$env:WinDir\System32\$backup" $jsonFile -Force *>$null
+                    }
                 }
                 $fail = Test-Path $edgeExe
             }
@@ -1154,6 +1159,8 @@ function Uninstall-Edge {
             $entries.PSObject.Properties | ? {$_.Name -like "*Edge*"} | % {Remove-ItemProperty $_ $_.Name -Force *>$null}
         }
     }
+
+    reg delete 'HKLM\SOFTWARE\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\EdgeUpdate' /f *>$null
 
     Write-Host "`nDone."
 }

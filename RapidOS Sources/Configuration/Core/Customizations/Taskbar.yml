@@ -11,65 +11,65 @@ actions:
       args: '-EP Bypass -C ".\Shell.ps1 -Cleanup Taskbar"'
 
   # === Show 'End task' option ===
-  - !registryValue: 
+  - !registryValue:
       path: 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings'
       value: 'TaskbarEndTask'
       type: REG_DWORD
       data: '1'
 
   # === Disable Windows Chat icon ===
-  - !registryValue: 
+  - !registryValue:
       path: 'HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Chat'
       value: 'ChatIcon'
       type: REG_DWORD
       data: '0'
-  - !registryValue: 
+  - !registryValue:
       path: 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
       value: 'TaskbarMn'
       type: REG_DWORD
       data: '0'
-  - !registryValue: 
+  - !registryValue:
       path: 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Communications'
       value: 'ConfigureChatAutoInstall'
       type: REG_DWORD
       data: '0'
 
   # === Remove People Bar ===
-  - !registryValue: 
+  - !registryValue:
       path: 'HKCU\SOFTWARE\Policies\Microsoft\Windows\Explorer'
       value: 'HidePeopleBar'
       type: REG_DWORD
       data: '1'
 
   # === Disable News and Interests widgets ===
-  - !registryValue: 
+  - !registryValue:
       path: 'HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds'
       value: 'EnableFeeds'
       type: REG_DWORD
       data: '0'
-  - !registryValue: 
+  - !registryValue:
       path: 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Feeds'
       value: 'ShellFeedsTaskbarViewMode'
       type: REG_DWORD
       data: '2'
-  - !registryValue: 
+  - !registryValue:
       path: 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
       value: 'TaskbarDa'
       type: REG_DWORD
       data: '0'
-  - !registryValue: 
+  - !registryValue:
       path: 'HKLM\SOFTWARE\Policies\Microsoft\Dsh'
       value: 'AllowNewsAndInterests'
       type: REG_DWORD
       data: '0'
 
   # === Remove Meet Now icon ===
-  - !registryValue: 
+  - !registryValue:
       path: 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
       value: 'HideSCAMeetNow'
       type: REG_DWORD
       data: '1'
-  - !registryValue: 
+  - !registryValue:
       path: 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
       value: 'HideSCAMeetNow'
       type: REG_DWORD

@@ -3,7 +3,7 @@ title: Chrome installation
 actions:
   - !run:
       runas: currentUserElevated
-      option: 'Chrome'
+      option: 'install-chrome'
       exeDir: true
       wait: true
       exe: 'powershell'
@@ -11,7 +11,7 @@ actions:
 
   - !run:
       runas: currentUserElevated
-      option: 'Chrome'
+      option: 'install-chrome'
       exeDir: true
       wait: true
       exe: 'powershell'

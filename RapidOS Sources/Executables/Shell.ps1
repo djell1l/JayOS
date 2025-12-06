@@ -40,31 +40,19 @@ function Clear-StartMenu {
     $userKeys = gci -Path 'Registry::HKU' | ? {$_.Name -match "S-1-5-21-[\d-]+$|AME_UserHive_"}
 
     foreach ($userKey in $userKeys) {
-        if (!(gci -Path $userKey.PsPath | ? {$_.Name -match $regPattern})) {continue}
+        if (!(gci -Path $userKey.PsPath -EA 0 | ? {$_.Name -match $regPattern})) {continue}
 
-        $default = $userKey.Name -match 'AME_UserHive_Default'
-        $appData = ''
-
-        if ($default) {
-            $guid = [guid]'F1B32785-6FBA-4FCF-9D55-7B8E7F157091'
-            $pszPath = [IntPtr]::Zero
-            if ([WinAPI]::SHGetKnownFolderPath($guid, 0x8000, -1, [ref]$pszPath) -eq 0) {
-                $appData = [Runtime.InteropServices.Marshal]::PtrToStringUni($pszPath)
-                [Runtime.InteropServices.Marshal]::FreeCoTaskMem($pszPath)
-            }
-        }
-        else {
-            $appData = (Get-ItemProperty "$($userKey.PSPath)\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders" -Name 'Local AppData' -EA 0).'Local AppData'
-        }
+        $isDefault = $userKey.Name -match 'AME_UserHive_Default'
+        $appData = if ($isDefault) {Get-UserPath -FolderID 'F1B32785-6FBA-4FCF-9D55-7B8E7F157091'} else {(Get-ItemProperty "$($userKey.PSPath)\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders" -Name 'Local AppData' -EA 0).'Local AppData'}
 
         if ($appData -and (Test-Path $appData)) {
             copy -Path "RapidResources\Layout.xml" -Destination "$appdata\Microsoft\Windows\Shell\LayoutModification.xml" -Force
-            if (!$default) {
+            if (!$isDefault) {
                 gci -Path "$appData\Packages" -Filter *Microsoft.Windows.StartMenuExperienceHost* -Recurse -EA 0 | ? {$_.Name -like 'start*.bin'} | del -Force
             }
         }
 
-        if (!$default) {
+        if (!$isDefault) {
             $tileGridPath = "$($userKey.PSPath)\SOFTWARE\Microsoft\Windows\CurrentVersion\CloudStore\Store\Cache\DefaultAccount"
             if (Test-Path $tileGridPath) {
                 gci -Path $tileGridPath -Recurse -EA 0 | ? {$_.Name -match 'start\.tilegrid'} | del -Force -Recurse
@@ -117,45 +105,99 @@ public static class ThemeManagerAPI {
 
     try {
         [ThemeManagerAPI]::ApplyTheme($themePath)
-    }
-    catch {
+    } catch {
         "SystemSettings", "control" | % {taskkill /f /im "$_.exe" *>$null}
         Start-Process -FilePath $themePath
         Start-Sleep -s 10
     }
 
     if ([System.Environment]::OSVersion.Version.Build -ge 22000) {
-        Set-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes" -Name "ThemeMRU" -Value "$((@(
+        Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes" -Name "ThemeMRU" -Type String -Value "$((@(
             "rapid-dark.theme",
             "rapid-light.theme",
             "dark.theme",
             "aero.theme"
-        ) | % {Join-Path $env:WinDir "Resources\Themes\$_"}) -join ';');" -Type String -Force
+        ) | % {Join-Path $env:WinDir "Resources\Themes\$_"}) -join ';');"
     }
 
     "SystemSettings", "control" | % {taskkill /f /im "$_.exe" *>$null}
 }
 
 function Set-Lockscreen {
+    $statePath = "HKCU:\SOFTWARE\RapidOS\Lockscreen"
+    $valSource = "LockScreen_SourceHash"
+    $valSystem = "LockScreen_SystemHash"
+
+    if (!(Test-Path $Lockscreen)) {return}
+
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    $streamSrc = [System.IO.File]::OpenRead($Lockscreen)
+    $hashSrc = [BitConverter]::ToString($sha.ComputeHash($streamSrc)) -replace '-'
+    $streamSrc.Dispose()
+
+    Add-Type -AssemblyName System.Runtime.WindowsRuntime
+    [Windows.Storage.StorageFile, Windows.Storage, ContentType=WindowsRuntime] *>$null
+    [Windows.System.UserProfile.LockScreen, Windows.System.UserProfile, ContentType=WindowsRuntime] *>$null
+    [Windows.Storage.Streams.DataReader, Windows.Storage.Streams, ContentType=WindowsRuntime] *>$null
+
+    $asTaskGen = ([System.WindowsRuntimeSystemExtensions].GetMethods() | ? {$_.Name -eq 'AsTask' -and $_.IsGenericMethod -and $_.GetParameters().Count -eq 1})[0]
+    $asTaskAct = ([System.WindowsRuntimeSystemExtensions].GetMethods() | ? {$_.Name -eq 'AsTask' -and !$_.IsGenericMethod -and $_.GetParameters().Count -eq 1})[0]
+
+    $hashSys = $null
+    try {
+        $curStream = [Windows.System.UserProfile.LockScreen]::GetImageStream()
+        if ($curStream) {
+            $reader = [Windows.Storage.Streams.DataReader]::New($curStream.GetInputStreamAt(0))
+            $loadOp = $reader.LoadAsync($curStream.Size)
+            $null = $asTaskGen.MakeGenericMethod([uint32]).Invoke($null, @($loadOp)).GetAwaiter().GetResult()
+
+            $sysBytes = New-Object byte[] $curStream.Size
+            $reader.ReadBytes($sysBytes)
+            $hashSys = [BitConverter]::ToString($sha.ComputeHash($sysBytes)) -replace '-'
+            $curStream.Dispose()
+        }
+    } catch {$hashSys = "UNKNOWN"}
+
+    if (Test-Path $statePath) {
+        $lastSrc = (Get-ItemProperty $statePath -Name $valSource -EA 0).$valSource
+        $lastSys = (Get-ItemProperty $statePath -Name $valSystem -EA 0).$valSystem
+        if ($hashSrc -eq $lastSrc -and $hashSys -eq $lastSys) {
+            $sha.Dispose()
+            return
+        }
+    }
+
     $temp = Join-Path $env:TEMP "$(New-Guid)$([System.IO.Path]::GetExtension($Lockscreen))"
     copy $Lockscreen $temp -Force
 
     try {
-        Add-Type -AssemblyName System.Runtime.WindowsRuntime *>$null
-        [Windows.Storage.StorageFile, Windows.Storage, ContentType=WindowsRuntime] *>$null
-        [Windows.System.UserProfile.LockScreen, Windows.System.UserProfile, ContentType=WindowsRuntime] *>$null
-
-        $asTaskGeneric = ([System.WindowsRuntimeSystemExtensions].GetMethods() | ? {$_.Name -eq 'AsTask' -and $_.IsGenericMethod -and $_.GetParameters().Count -eq 1})[0]
-        $asTaskAction = ([System.WindowsRuntimeSystemExtensions].GetMethods() | ? {$_.Name -eq 'AsTask' -and !$_.IsGenericMethod -and $_.GetParameters().Count -eq 1})[0]
-
-        $getImgOperation = [Windows.Storage.StorageFile]::GetFileFromPathAsync($temp)
-        $img = $asTaskGeneric.MakeGenericMethod([Windows.Storage.StorageFile]).Invoke($null, @($getImgOperation)).GetAwaiter().GetResult()
+        $getOp = [Windows.Storage.StorageFile]::GetFileFromPathAsync($temp)
+        $img = $asTaskGen.MakeGenericMethod([Windows.Storage.StorageFile]).Invoke($null, @($getOp)).GetAwaiter().GetResult()
         
-        $setImgOperation = [Windows.System.UserProfile.LockScreen]::SetImageFileAsync($img)
-        $asTaskAction.Invoke($null, @($setImgOperation)).GetAwaiter().GetResult() *>$null
+        $setOp = [Windows.System.UserProfile.LockScreen]::SetImageFileAsync($img)
+        $asTaskAct.Invoke($null, @($setOp)).GetAwaiter().GetResult() *>$null
+
+        $finalSysHash = $null
+        try {
+            $newStream = [Windows.System.UserProfile.LockScreen]::GetImageStream()
+            if ($newStream) {
+                $reader = [Windows.Storage.Streams.DataReader]::New($newStream.GetInputStreamAt(0))
+                $loadOp = $reader.LoadAsync($newStream.Size)
+                $null = $asTaskGen.MakeGenericMethod([uint32]).Invoke($null, @($loadOp)).GetAwaiter().GetResult()
+
+                $newBytes = New-Object byte[] $newStream.Size
+                $reader.ReadBytes($newBytes)
+                $finalSysHash = [BitConverter]::ToString($sha.ComputeHash($newBytes)) -replace '-'
+                $newStream.Dispose()
+            }
+        } catch {}
+
+        Set-RegistryValue -Path $statePath -Name $valSource -Type String -Value $hashSrc
+        if ($finalSysHash) {Set-RegistryValue -Path $statePath -Name $valSystem -Type String -Value $finalSysHash}
     }
     finally {
         del $temp -Force -EA 0
+        if ($sha) {$sha.Dispose()}
     }
 }
 
@@ -169,8 +211,6 @@ public static class WinAPI {
     public static extern IntPtr GetModuleHandle(string lpModuleName);
     [DllImport("user32.dll", CharSet = CharSet.Auto)]
     public static extern int LoadString(IntPtr hInstance, uint uID, StringBuilder lpBuffer, int nBufferMax);
-    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
-    public static extern int SHGetKnownFolderPath([MarshalAs(UnmanagedType.LPStruct)] Guid rfid, uint dwFlags, IntPtr hToken, out IntPtr pszPath);
 }
 "@ -EA 0
 }

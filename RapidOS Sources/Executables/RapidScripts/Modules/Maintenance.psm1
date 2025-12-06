@@ -128,13 +128,6 @@ function Specifications {
         }
     }
 
-    if ($osLine -match "IoT") {
-        Write-Host "LTSC/IoT build detected."
-        if (!(MessageBox -Message "You are on an LTSC/IoT version of Windows. RapidOS has not been thoroughly tested on this version. Do you want to continue?" -Title "Attention!" -Type "Question" -YesNo)) {
-            exit 1
-        }
-    }
-
     if ($osLine -match "Home") {
         Write-Host "Windows Home detected."
         if (!(MessageBox -Message "RapidOS is not officially supported on Windows Home. Unstable behavior or errors may occur. Do you want to continue?" -Title "Attention!" -Type "Question" -YesNo)) {
@@ -145,6 +138,7 @@ function Specifications {
 
 function Tweakers {
     Write-Host "Checking for third-party tweakers..."
+
     $tweakers = @{
         Windows10Debloater  = "$env:SystemDrive\Temp\Windows10Debloater"
         Win10BloatRemover   = "$env:TEMP\.net\Win10BloatRemover"
@@ -171,58 +165,73 @@ function Tweakers {
         ChlorideOS          = {Get-Volume -EA 0 | ? {$_.FileSystemLabel -eq "ChlorideOS"}}
         ZOICWARE            = {Test-Path (Join-Path -Path $env:SystemDrive -ChildPath "_FOLDERMUSTBEONCDRIVE") -EA 0}
     }
+
+    $osRegex = '\b(\w+OS)\b'
+    $found = @()
+    $localFound = @()
+
     $osChecks = @{
         registry = {
             $orgPaths = @(
                 "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion",
                 "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\OEMInformation"
             )
-            $foundOS = @()
             $orgPaths | % {
                 if (Test-Path $_) {
                     $props = Get-ItemProperty -Path $_ -EA 0
                     if ($_ -eq "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion") {
                         $orgValue = $props.RegisteredOrganization
-                        if ($orgValue -and $orgValue -match "(\w+OS)") {
-                            $foundOS += $matches[1]
+                        if ($orgValue) {
+                            $m = [Regex]::Match($orgValue, $osRegex)
+                            if ($m.Success) {
+                                $localFound += $m.Groups[1].Value
+                            }
                         }
                     }
                     if ($_ -eq "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\OEMInformation") {
                         $modelValue = $props.Model
-                        if ($modelValue -and $modelValue -match "(\w+OS)") {
-                            $foundOS += $matches[1]
+                        if ($modelValue) {
+                            $m2 = [Regex]::Match($modelValue, $osRegex)
+                            if ($m2.Success) {
+                                $localFound += $m2.Groups[1].Value
+                            }
                         }
                     }
                 }
             }
-            return ($foundOS | Select -Unique)
+            return ($localFound | Select -Unique)
         }
         bcd = {
             $bcdOutput = bcdedit /enum ALL 2>$null
             if ($LASTEXITCODE -eq 0) {
-                $foundOS = @()
                 ($bcdOutput -split [System.Environment]::NewLine) | % {
-                    if ($_ -match "description\s+(.*)") {
-                        $desc = $matches[1].Trim()
-                        if ($desc -match "(\w+OS)") {
-                            $foundOS += $matches[1]
+                    $mDesc = [Regex]::Match($_, 'description\s+(.*)')
+                    if ($mDesc.Success) {
+                        $desc = $mDesc.Groups[1].Value.Trim()
+                        if ($desc) {
+                            $m = [Regex]::Match($desc, $osRegex)
+                            if ($m.Success) {
+                                $localFound += $m.Groups[1].Value
+                            }
                         }
                     }
                 }
-                return ($foundOS | Select -Unique)
+                return ($localFound | Select -Unique)
             }
             return @()
         }
         power = {
             $plans = Get-CimInstance -ClassName Win32_PowerPlan -EA 0
             if ($plans) {
-                $foundOS = @()
                 $plans | % {
-                    if ($_.ElementName -match "(\w+OS)") {
-                        $foundOS += $matches[1]
+                    if ($_.ElementName) {
+                        $m = [Regex]::Match($_.ElementName, $osRegex)
+                        if ($m.Success) {
+                            $localFound += $m.Groups[1].Value
+                        }
                     }
                 }
-                return ($foundOS | Select -Unique)
+                return ($localFound | Select -Unique)
             }
             return @()
         }
@@ -230,56 +239,55 @@ function Tweakers {
     $ameCheck = {
         $basePath = "HKLM:\SOFTWARE\AME\Playbooks\Applied"
         if (Test-Path $basePath) {
-            $subKeys = Get-ChildItem -Path $basePath -EA 0
+            $subKeys = gci -Path $basePath -EA 0
             $subKeys | % {
                 $props = Get-ItemProperty -Path $_.PSPath -EA 0
-                if ($props.Name -and $props.Name -ne "RapidOS" -and $props.Name -match "\w+") {
+                if ($props.Name -and $props.Name -match "\w+") {
                     return $props.Name
                 }
             }
         }
-        return $null
+        return @()
     }
-    $found = @()
+
     $tweakers.Keys | % {
         $name = $_
         $check = $tweakers[$name]
         switch ($check.GetType().Name) {
             ScriptBlock {
-                if (& $check) {$found += $name; Write-Host "Found: $name"}
+                if (& $check) {$found += $name}
             }
             Object[] {
                 foreach ($path in $check) {
-                    if (Test-Path $path) {$found += $name; Write-Host "Found: $name"; break}
+                    if (Test-Path $path) {$found += $name; break}
                 }
             }
             default {
-                if (Test-Path $check) {$found += $name; Write-Host "Found: $name"}
+                if (Test-Path $check) {$found += $name}
             }
         }
     }
     $detectedOS = @()
     $osChecks.Keys | % {
-        $result = & $osChecks.$_
-        if ($result) {
-            $detectedOS += $result
-        }
+        & $osChecks.$_ | % {$detectedOS += $_}
     }
     $ameResult = & $ameCheck
     if ($ameResult) {
         if ($found -notcontains $ameResult) {
             $found += $ameResult
-            Write-Host "Found: $ameResult"
         }
     }
     $uniqueOS = $detectedOS | ? {$_ -and $_.Trim()} | Select -Unique
     $uniqueOS | % {
         if ($found -notcontains $_) {
             $found += $_
-            Write-Host "Found: $_"
         }
     }
+    
+    $found = $found | ? {$_ -ne "RapidOS"} | Select -Unique
+    
     if ($found.Count) {
+        $found | % {Write-Host "Found: $_"}
         $tweakersList = ($found | Select -Unique) -join ", "
         if (!(MessageBox -Message "Third-party tweaks detected ($tweakersList). We recommend installing RapidOS on a clean system. Do you want to continue?" -Title "Attention!" -Type "Question" -YesNo)) {
             exit 1

@@ -1,27 +1,34 @@
 @echo off
-setlocal
 
 >nul fltmc || (
     powershell -c "Start-Process '%~f0' -Verb RunAs"
     exit /b
 )
 
-reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" /v "NoLazyMode" /t REG_DWORD /d 0 /f > nul 2>&1
-reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" /v "NetworkThrottlingIndex" /t REG_DWORD /d 10 /f > nul 2>&1
-reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" /v "SystemResponsiveness" /t REG_DWORD /d 10 /f > nul 2>&1
-reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" /v "LazyModeTimeout" /t REG_DWORD /d 4294967295 /f > nul 2>&1
-reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" /v "SchedulerPeriod" /t REG_DWORD /d 1000000 /f > nul 2>&1
-reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" /v "IdleDetectionCycles" /t REG_DWORD /d 2 /f > nul 2>&1
-reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" /v "MaxThreadsPerProcess" /t REG_DWORD /d 32 /f > nul 2>&1
-reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" /v "MaxThreadsTotal" /t REG_DWORD /d 256 /f > nul 2>&1
-reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" /v "SchedulerTimerResolution" /t REG_DWORD /d 10000 /f > nul 2>&1
-reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Audio" /v "Priority" /t REG_DWORD /d 1 /f > nul 2>&1
-reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Audio" /v "Scheduling Category" /t REG_SZ /d "Medium" /f > nul 2>&1
-reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Audio" /v "Priority When Yielded" /t REG_DWORD /d 1 /f > nul 2>&1
-reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Pro Audio" /v "Priority" /t REG_DWORD /d 1 /f > nul 2>&1
-reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Pro Audio" /v "Scheduling Category" /t REG_SZ /d "Medium" /f > nul 2>&1
-reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Pro Audio" /v "Priority When Yielded" /t REG_DWORD /d 1 /f > nul 2>&1
-
-echo MMCSS has been successfully configured.
-pause
+powershell -c "$f='%~f0'; $lines=Get-Content $f; $idx=$lines.IndexOf(':PS'); iex ($lines[($idx+1)..($lines.Length-1)] -join [Environment]::NewLine)"
 exit /b
+
+:PS
+Import-RegState -JsonPath "$env:WinDir\RapidScripts\MMCSS.json" *>$null;
+$mmcss = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile";
+Set-RegistryValue -Path $mmcss -Name "SystemResponsiveness" -Type DWORD -Value 10;
+        
+Set-RegistryValue -Path "$mmcss\Tasks\Audio" -Name "Scheduling Category" -Type String -Value "Medium";
+Set-RegistryValue -Path "$mmcss\Tasks\Audio" -Name "Priority" -Type DWORD -Value 1;
+Set-RegistryValue -Path "$mmcss\Tasks\Audio" -Name "Priority When Yielded" -Type DWORD -Value 1;
+
+Set-RegistryValue -Path "$mmcss\Tasks\Pro Audio" -Name "Scheduling Category" -Type String -Value "Medium";
+Set-RegistryValue -Path "$mmcss\Tasks\Pro Audio" -Name "Priority" -Type DWORD -Value 1;
+Set-RegistryValue -Path "$mmcss\Tasks\Pro Audio" -Name "Priority When Yielded" -Type DWORD -Value 1;
+
+Set-RegistryValue -Path "$mmcss\Tasks\Games" -Name "Scheduling Category" -Type String -Value "High";
+
+if (!(Test-Laptop)) {
+    Set-RegistryValue -Path $mmcss -Name "NetworkThrottlingIndex" -Type DWORD -Value 4294967295;
+    Set-RegistryValue -Path $mmcss -Name "SchedulerPeriod" -Type DWORD -Value 1000000;
+    Set-RegistryValue -Path $mmcss -Name "LazyModeTimeout" -Type DWORD -Value 25000
+}
+
+Write-Host "MMCSS has been successfully configured."
+pause
+exit

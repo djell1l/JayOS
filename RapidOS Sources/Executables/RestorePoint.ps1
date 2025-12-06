@@ -5,6 +5,12 @@ param (
     [string]$Name
 )
 
+$regPath = 'HKLM:\SYSTEM\CurrentControlSet\Services\VSS'
+if (!(Test-Path $regPath)) {
+    Write-Host "VSS service not found. Restore points cannot be created."
+    return
+}
+
 Add-Type -ReferencedAssemblies 'System.Management.dll' -Language CSharp -TypeDefinition @"
 using System.Management;
 using System.Runtime.InteropServices;
@@ -37,11 +43,6 @@ public class RP {
 }
 "@
 
-$regPath = 'HKLM:\SYSTEM\CurrentControlSet\Services\VSS'
-if (!(Test-Path $regPath)) {
-    Write-Host "VSS service not found. Restore points cannot be created."
-    return
-}
 $startType = Get-ItemProperty -Path $regPath -Name Start -EA 0
 if ($startType.Start -eq 4) {
     Set-RegistryValue -Path $regPath -Name Start -Type DWORD -Value 3

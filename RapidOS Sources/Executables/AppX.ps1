@@ -34,6 +34,14 @@ for ($i = 0; $i -lt $Packages.Count; $i++) {
             Set-NonRemovableAppsPolicy -Online -PackageFamilyName $family -NonRemovable 0 *>$null
         }
 
+        # === System-wide removal ===
+        Get-AppxProvisionedPackage -Online | ? {$_.DisplayName -like "*$family*"} | % {
+            Remove-AppxProvisionedPackage -Online -PackageName $_.PackageName -AllUsers *>$null
+        }
+        try {
+            Remove-AppxPackage -Package $name -AllUsers -EA 0
+        } catch {}
+
         # === Per-user cleanup ===
         $pkg.PackageUserInformation | % {
             $info = $_
@@ -43,7 +51,7 @@ for ($i = 0; $i -lt $Packages.Count; $i++) {
 
             New-Item -Path (Join-Path $regKey "EndOfLife\$sid\$name") -Force *>$null
             try {
-                Remove-AppxPackage -Package $name -User $sid
+                Remove-AppxPackage -Package $name -User $sid -EA 0
             } catch {}
         }
 
@@ -66,7 +74,7 @@ for ($i = 0; $i -lt $Packages.Count; $i++) {
                 "HKU:\${sid}_Classes\Local Settings\Software\Microsoft\Windows\CurrentVersion\AppModel\Repository\Packages\$name",
                 "HKU:\${sid}_Classes\Local Settings\Software\Microsoft\Windows\CurrentVersion\AppModel\Repository\Families\$family"
             )
-            $exactPaths | ? {Test-Path $_} | % {Remove-Item $_ -Recurse -Force *>$null}
+            $exactPaths | ? {Test-Path $_} | % {del $_ -Recurse -Force *>$null}
 
             # === Additional PackageId paths ===
             $packageIdRoot = "HKU:\${sid}_Classes\Extensions\ContractId"
@@ -78,7 +86,7 @@ for ($i = 0; $i -lt $Packages.Count; $i++) {
                                 $value = $_; $value -eq $name -or $value -eq $family
                             }
                         )
-                    } | % {Remove-Item $_.PSPath -Recurse -Force *>$null}
+                    } | % {del $_.PSPath -Recurse -Force *>$null}
                 }
             }
 
@@ -87,7 +95,7 @@ for ($i = 0; $i -lt $Packages.Count; $i++) {
             if (Test-Path $hkcrRoot) {
                 gci $hkcrRoot -EA 0 | ? {
                     $_.PSChildName -eq $name -or $_.PSChildName -eq $family
-                } | % {Remove-Item $_.PSPath -Recurse -Force *>$null}
+                } | % {del $_.PSPath -Recurse -Force *>$null}
             }
         }
 
@@ -122,10 +130,5 @@ for ($i = 0; $i -lt $Packages.Count; $i++) {
             cmd /c icacls "$folder" /grant *S-1-5-32-544:F /t /c /q *>$null
             del $folder -Force -Recurse *>$null
         }
-
-        # === Final system-wide removal ===
-        try {
-            Remove-AppxPackage -Package $name -AllUsers
-        } catch {}
     }
 }

@@ -3,7 +3,7 @@ title: .NET 3.5 Framework installation
 actions:
   - !run:
       runas: currentUserElevated
-      option: '.NET3.5'
+      option: 'install-net3.5'
       exeDir: true
       wait: true
       exe: 'powershell'

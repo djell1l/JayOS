@@ -3,7 +3,7 @@ title: DirectX installation
 actions:
   - !run:
       runas: currentUserElevated
-      option: 'DirectX'
+      option: 'install-directx'
       exeDir: true
       wait: true
       exe: 'powershell'

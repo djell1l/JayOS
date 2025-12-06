@@ -6,7 +6,8 @@ actions:
       exeDir: true
       command: |
         .\RapidScripts\EnvSetup.ps1
-        $memGB = [math]::Round(((Get-CimInstance Win32_PhysicalMemory | Measure-Object Capacity -Sum).Sum) / 1GB)
+        $ramLine = Get-Specs | ? {$_ -match 'RAM:'} | % {$_ -replace '[^0-9,.]'}
+        $memGB = [double]$ramLine
 
         # === Paths ===
         $visualEffectsPath = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects'

@@ -185,6 +185,18 @@ actions:
       type: REG_DWORD
       data: '0'
 
+  # === Disable collecting energy data per app for telemetry ===
+  - !registryValue:
+      path: 'HKLM\SYSTEM\CurrentControlSet\Control\Power\EnergyEstimation\TaggedEnergy'
+      value: 'TelemetryMaxApplication'
+      type: REG_DWORD
+      data: '1'
+  - !registryValue:
+      path: 'HKLM\SYSTEM\CurrentControlSet\Control\Power\EnergyEstimation\TaggedEnergy'
+      value: 'TelemetryMaxTagPerApplication'
+      type: REG_DWORD
+      data: '1'
+
   # === Disable diagnostic log collection ===
   - !registryValue:
       path: 'HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection'

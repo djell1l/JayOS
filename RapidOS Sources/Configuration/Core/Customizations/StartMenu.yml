@@ -11,7 +11,7 @@ actions:
   - !appx: {name: '*Microsoft.Windows.StartMenuExperienceHost*', operation: clearCache}
 
   # === Ensure more pins than recommendations ===
-  - !registryValue: 
+  - !registryValue:
       path: 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
       value: 'Start_Layout'
       type: REG_DWORD

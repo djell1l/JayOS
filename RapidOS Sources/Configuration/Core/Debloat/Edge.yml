@@ -3,7 +3,7 @@ title: Remove Microsoft Edge
 actions:
   - !run:
       runas: currentUserElevated
-      option: 'Edge'
+      option: 'remove-edge'
       exeDir: true
       wait: true
       exe: 'powershell'
@@ -15,7 +15,7 @@ actions:
   - !service: {name: 'edgeupdatem', operation: change, startup: 3, option: '!Edge'}
   - !run:
       runas: currentUserElevated
-      option: '!Edge'
+      option: '!remove-edge'
       exeDir: true
       wait: true
       exe: 'powershell'

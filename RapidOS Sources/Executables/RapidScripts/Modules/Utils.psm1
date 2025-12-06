@@ -17,8 +17,7 @@ function Set-RegistryValue {
         if ($PSCmdlet.ShouldProcess($Path, 'Create registry key if not exists')) {
             $regKey = $regRoot.OpenSubKey($subkey, $true)
             if (!$regKey) {$regKey = $regRoot.CreateSubKey($subkey)}
-        }
-        else {
+        } else {
             $regKey = $regRoot.OpenSubKey($subkey, $false)
             if (!$regKey) {return}
         }
@@ -29,19 +28,20 @@ function Set-RegistryValue {
                     if ($Value -is [string]) {
                         $bytes = $Value -split '\s+' | ? {$_ -ne ''} | % {[Convert]::ToByte($_, 16)}
                         $Value = [byte[]]$bytes
-                    }
-                    elseif ($Value -isnot [byte[]]) {$Value = [byte[]]@()}
+                    } elseif ($Value -isnot [byte[]]) {$Value = [byte[]]@()}
                     $regKey.SetValue($Name, $Value, [Microsoft.Win32.RegistryValueKind]::Binary)
                 }
                 'DWORD' {
                     if ($null -eq $Value -or $Value -eq '') {$Value = 0}
-                    $intValue = [int]$Value
-                    $regKey.SetValue($Name, $intValue, [Microsoft.Win32.RegistryValueKind]::DWord)
+                    $finalValue = $Value
+                    try {$bytes = [BitConverter]::GetBytes([UInt32]$Value); $finalValue = [BitConverter]::ToInt32($bytes, 0)} catch {$finalValue = [Int32]$Value}
+                    $regKey.SetValue($Name, $finalValue, [Microsoft.Win32.RegistryValueKind]::DWord)
                 }
                 'QWord' {
                     if ($null -eq $Value -or $Value -eq '') {$Value = 0}
-                    $ulongValue = [UInt64]$Value
-                    $regKey.SetValue($Name, $ulongValue, [Microsoft.Win32.RegistryValueKind]::QWord)
+                    $qwordBytes = [BitConverter]::GetBytes([UInt64]$Value)
+                    $longValue = [BitConverter]::ToInt64($qwordBytes, 0)
+                    $regKey.SetValue($Name, $longValue, [Microsoft.Win32.RegistryValueKind]::QWord)
                 }
                 'MultiString' {
                     if ($null -eq $Value) {$Value = @()}
@@ -49,7 +49,9 @@ function Set-RegistryValue {
                     elseif ($Value -isnot [string[]]) {$Value = @([string[]]$Value)}
                     $regKey.SetValue($Name, [string[]]$Value, [Microsoft.Win32.RegistryValueKind]::MultiString)
                 }
-                'ExpandString' {$regKey.SetValue($Name, [string]$Value, [Microsoft.Win32.RegistryValueKind]::ExpandString)}
+                'ExpandString' {
+                    $regKey.SetValue($Name, [string]$Value, [Microsoft.Win32.RegistryValueKind]::ExpandString)
+                }
                 'Unknown' {
                     if ($Value -is [string]) {$Value = [System.Text.Encoding]::UTF8.GetBytes($Value)}
                     elseif ($Value -isnot [byte[]]) {$Value = [byte[]]@()}

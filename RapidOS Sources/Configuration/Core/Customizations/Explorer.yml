@@ -37,14 +37,14 @@ actions:
       data: '1'
 
   # === Disable wallpaper compression ===
-  - !registryValue: 
+  - !registryValue:
       path: 'HKCU\Control Panel\Desktop'
       value: 'JPEGImportQuality'
       type: REG_DWORD
       data: '100'
 
   # === Remove '- Shortcut' text added onto shortcuts ===
-  - !registryValue: 
+  - !registryValue:
       path: 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer'
       value: 'link'
       type: REG_BINARY
@@ -56,7 +56,7 @@ actions:
       operation: delete
 
   # === Do not show sync provider notifications ===
-  - !registryValue: 
+  - !registryValue:
       path: 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
       value: 'ShowSyncProviderNotifications'
       type: REG_DWORD
@@ -70,35 +70,35 @@ actions:
       data: '0'
 
   # === Show tooltips faster, 150 ms instead of 400 ===
-  - !registryValue: 
+  - !registryValue:
       path: 'HKCU\Control Panel\Mouse'
       value: 'MouseHoverTime'
       type: REG_SZ
       data: '150'
 
   # === Open submenus quicker, 100 ms instead of 400 ===
-  - !registryValue: 
+  - !registryValue:
       path: 'HKCU\Control Panel\Desktop'
       value: 'MenuShowDelay'
       type: REG_SZ
       data: '100'
 
   # === Activate window on hover after 200 ms to avoid misclicks ===
-  - !registryValue: 
+  - !registryValue:
       path: 'HKCU\Control Panel\Desktop'
       value: 'ActiveWndTrkTimeout'
       type: REG_DWORD
       data: '200'
 
   # === Mark app as not responding after 3 sec instead of 5 ===
-  - !registryValue: 
+  - !registryValue:
       path: 'HKCU\Control Panel\Desktop'
       value: 'HungAppTimeout'
       type: REG_SZ
       data: '3000'
 
   # === Kill apps on shutdown after 5 sec instead of 20 ===
-  - !registryValue: 
+  - !registryValue:
       path: 'HKCU\Control Panel\Desktop'
       value: 'WaitToKillAppTimeout'
       type: REG_SZ
@@ -110,3 +110,25 @@ actions:
       value: 'WaitToKillServiceTimeout'
       type: REG_SZ
       data: '3000'
+
+  # === Create RapidOS Toolbox shortcut ===
+  - !powerShell:
+      handleExitCodes: {'!0': halt}
+      exeDir: true
+      wait: true
+      command: |
+        .\RapidScripts\EnvSetup.ps1
+        $src = 'RapidScripts\RapidOS Toolbox.lnk'
+        
+        copy $src (Join-Path (Get-UserPath) 'RapidOS Toolbox.lnk') -Force
+
+        $users = gci 'Registry::HKU' | ? {$_.Name -match 'S-[0-9-]+(?!.*_)' -and (gci $_.PsPath | ? {$_.Name -match 'Volatile|AME_'})}
+        
+        foreach ($u in $users) {
+            $desk = (Get-ItemProperty ($u.PsPath + '\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders') -EA 0).Desktop
+            if ($desk) {
+                $prof = (Get-ItemProperty ('Registry::HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\' + $u.PSChildName) -EA 0).ProfileImagePath
+                if ($prof) {$desk = $desk.Replace('%USERPROFILE%', $prof)}
+                if (Test-Path $desk) {copy $src (Join-Path $desk 'RapidOS Toolbox.lnk') -Force}
+            }
+        }

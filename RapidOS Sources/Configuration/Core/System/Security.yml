@@ -3,11 +3,13 @@ title: Security configuration
 actions:
   # === Disable Microsoft Defender === 
   - !powerShell:
+      option: 'disable-defender'
       exeDir: true
       wait: true
       command: >-
         .\RapidScripts\EnvSetup.ps1;
-        & 'C:\Windows\RapidScripts\Playbook\Defender.ps1' -disable_av -delayedRestart -silent
+        if (!(MessageBox -Message 'Disabling Windows Defender will leave your system vulnerable to malware and security threats. This action is not recommended. Do you want to proceed at your own risk?' -Title 'Attention!' -Type 'Question' -YesNo)) {exit}
+        & ($env:WinDir + '\RapidScripts\Playbook\Defender.ps1') -disable_av -delayedRestart -silent
 
   # === Disable switching to the Secure Desktop when prompting for elevation ===
   - !registryValue:
@@ -17,27 +19,27 @@ actions:
       data: '0'
 
   # === Disable Fault Tolerant Heap ===
-  - !registryValue: 
+  - !registryValue:
       path: 'HKLM\SOFTWARE\Microsoft\FTH'
       value: 'Enabled'
       type: REG_DWORD
       data: '0'
-  - !registryKey: {path: 'HKLM\SOFTWARE\Microsoft\FTH\State'}
+  - !registryKey: {path: 'HKLM\SOFTWARE\Microsoft\FTH\State', operation: delete}
 
   # === Disable VBS ===
-  - !registryValue: 
+  - !registryValue:
       path: 'HKLM\SYSTEM\CurrentControlSet\Control\DeviceGuard'
       value: 'EnableVirtualizationBasedSecurity'
       type: REG_DWORD
       data: '0'
-  - !registryValue: 
+  - !registryValue:
       path: 'HKLM\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity'
       value: 'Enabled'
       type: REG_DWORD
       data: '0'
 
   # === Disable Smart App Control ===
-  - !registryValue: 
+  - !registryValue:
       path: 'HKLM\SYSTEM\ControlSet001\Control\CI\Policy'
       value: 'VerifiedAndReputablePolicyState'
       type: REG_DWORD
@@ -61,4 +63,4 @@ actions:
   - !run:
       exe: 'net'
       args: 'accounts /maxpwage:unlimited'
-      showOutput: 'false'
+      showOutput: false
